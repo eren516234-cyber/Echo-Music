@@ -2,20 +2,20 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useRef, useState } from "react";
 import {
-  Animated, Dimensions, Image, PanResponder,
+  Dimensions, Image, PanResponder,
   Platform, Pressable, StyleSheet, Text, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlayer } from "@/context/PlayerContext";
-import { GLOBAL_SONGS, GlobalSong } from "@/constants/data";
+import { GLOBAL_SONGS, GlobalSong, SONGS } from "@/constants/mockData";
 
 const { width, height } = Dimensions.get("window");
-const GLOBE_SIZE = Math.min(width, height * 0.55);
+const GLOBE_SIZE = Math.min(width - 40, height * 0.50);
 const R = GLOBE_SIZE / 2;
 
-function project3D(x: number, y: number, rotX: number, rotY: number) {
-  const phi = (y - 0.5) * Math.PI;
-  const theta = (x - 0.5) * 2 * Math.PI + rotY;
+function latLonToXY(lat: number, lon: number, rotX: number, rotY: number) {
+  const phi   = (lat * Math.PI) / 180;
+  const theta = (lon * Math.PI) / 180 + rotY;
   const px = Math.cos(phi) * Math.sin(theta);
   const py = -Math.sin(phi) * Math.cos(rotX) + Math.cos(phi) * Math.cos(theta) * Math.sin(rotX);
   const pz = Math.sin(phi) * Math.sin(rotX) + Math.cos(phi) * Math.cos(theta) * Math.cos(rotX);
@@ -28,23 +28,21 @@ export default function GlobeScreen() {
   const [selected, setSelected] = useState<GlobalSong | null>(null);
   const rotX = useRef(0.3);
   const rotY = useRef(0);
-  const rotAnim = useRef(new Animated.ValueXY({ x: 0.3, y: 0 })).current;
+  const [, forceUpdate] = useState(0);
   const lastPos = useRef({ x: 0, y: 0 });
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (_, gs) => {
-        lastPos.current = { x: gs.x0, y: gs.y0 };
-      },
+      onPanResponderGrant: (_, gs) => { lastPos.current = { x: gs.x0, y: gs.y0 }; },
       onPanResponderMove: (_, gs) => {
         const dx = (gs.moveX - lastPos.current.x) / GLOBE_SIZE * 3;
         const dy = (gs.moveY - lastPos.current.y) / GLOBE_SIZE * 3;
         lastPos.current = { x: gs.moveX, y: gs.moveY };
         rotY.current += dx;
         rotX.current = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotX.current + dy));
-        rotAnim.setValue({ x: rotX.current, y: rotY.current });
+        forceUpdate(n => n + 1);
       },
     })
   ).current;
@@ -52,76 +50,64 @@ export default function GlobeScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 27 : 0) }]}>
       <Text style={styles.title}>Music Globe</Text>
-      <Text style={styles.sub}>{GLOBAL_SONGS.length} songs from around the world · drag to spin</Text>
+      <Text style={styles.sub}>{GLOBAL_SONGS.length} songs · drag to spin</Text>
 
       <View style={styles.globeWrap} {...panResponder.panHandlers}>
-        {/* Globe circle */}
         <View style={styles.globe}>
-          {/* Latitude lines */}
+          {/* Grid lines */}
           {[-40, 0, 40].map(lat => (
-            <View
-              key={lat}
-              style={[styles.latLine, {
-                top: R + (lat / 90) * R - 0.5,
-                width: Math.cos((lat * Math.PI) / 180) * GLOBE_SIZE,
-                left: R - Math.cos((lat * Math.PI) / 180) * R,
-              }]}
-            />
-          ))}
-          {/* Longitude lines */}
-          {[0, 60, 120].map(lon => (
-            <View key={lon} style={[styles.lonLine, { left: R - 0.5, transform: [{ rotate: `${lon}deg` }] }]} />
+            <View key={lat} style={[styles.latLine, {
+              top: R + (lat / 90) * R - 0.5,
+              width: Math.cos((lat * Math.PI) / 180) * GLOBE_SIZE,
+              left: R - Math.cos((lat * Math.PI) / 180) * R,
+            }]} />
           ))}
 
-          <Animated.View style={{ position: "absolute", width: GLOBE_SIZE, height: GLOBE_SIZE }}>
-            {GLOBAL_SONGS.map(song => {
-              const { px, py, pz } = project3D(song.x, song.y, rotX.current, rotY.current);
-              const screenX = R + px * R * 0.9;
-              const screenY = R + py * R * 0.9;
-              const visible = pz > 0;
-              const scale = 0.6 + pz * 0.5;
-              const opacity = visible ? 0.4 + pz * 0.6 : 0;
-              const isActive = currentSong?.id === song.id || selected?.id === song.id;
+          {GLOBAL_SONGS.map(song => {
+            const { px, py, pz } = latLonToXY(song.lat, song.lon, rotX.current, rotY.current);
+            const sx = R + px * R * 0.88;
+            const sy = R + py * R * 0.88;
+            const visible = pz > 0;
+            const scale = 0.55 + pz * 0.55;
+            const opacity = visible ? 0.35 + pz * 0.65 : 0;
+            const isActive = currentSong?.id === song.id || selected?.id === song.id;
 
-              return (
-                <Pressable
-                  key={song.id}
-                  style={[styles.dot, {
-                    left: screenX - 18,
-                    top: screenY - 18,
-                    opacity,
-                    transform: [{ scale }],
-                    borderColor: isActive ? "#fff" : song.color,
-                    backgroundColor: song.color + "33",
-                  }]}
-                  onPress={() => {
-                    if (!visible) return;
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    if (selected?.id === song.id) {
-                      playSong(song as any, GLOBAL_SONGS as any);
-                      setSelected(null);
-                    } else {
-                      setSelected(song);
-                    }
-                  }}
-                >
-                  <Image source={{ uri: song.artwork }} style={styles.dotImg} />
-                </Pressable>
-              );
-            })}
-          </Animated.View>
+            return (
+              <Pressable
+                key={song.id}
+                style={[styles.dot, {
+                  left: sx - 18, top: sy - 18,
+                  opacity, transform: [{ scale }],
+                  borderColor: isActive ? "#fff" : song.color,
+                  backgroundColor: song.color + "33",
+                }]}
+                onPress={() => {
+                  if (!visible) return;
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  if (selected?.id === song.id) {
+                    playSong(song as any, GLOBAL_SONGS as any);
+                    setSelected(null);
+                  } else {
+                    setSelected(song);
+                  }
+                }}
+              >
+                <Image source={{ uri: song.artwork }} style={styles.dotImg} />
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
       {/* Selected card */}
-      {selected && (
-        <View style={[styles.card, { borderColor: selected.color + "66" }]}>
+      {selected ? (
+        <View style={[styles.card, { borderColor: selected.color + "55" }]}>
           <Image source={{ uri: selected.artwork }} style={styles.cardImg} />
           <View style={styles.cardInfo}>
             <Text style={styles.cardTitle} numberOfLines={1}>{selected.title}</Text>
             <Text style={styles.cardArtist}>{selected.artist}</Text>
             <View style={styles.cardMeta}>
-              <Feather name="map-pin" size={11} color="#666" />
+              <Feather name="map-pin" size={11} color="#555" />
               <Text style={styles.cardCountry}>{selected.country}</Text>
             </View>
           </View>
@@ -136,10 +122,8 @@ export default function GlobeScreen() {
             <Feather name="play" size={18} color="#000" />
           </Pressable>
         </View>
-      )}
-
-      {!selected && (
-        <Text style={styles.hint}>tap cover → tap again to play</Text>
+      ) : (
+        <Text style={styles.hint}>Tap a cover → tap again to play</Text>
       )}
     </View>
   );
@@ -152,20 +136,14 @@ const styles = StyleSheet.create({
   globeWrap: { width: GLOBE_SIZE + 20, height: GLOBE_SIZE + 20, alignItems: "center", justifyContent: "center" },
   globe: {
     width: GLOBE_SIZE, height: GLOBE_SIZE, borderRadius: GLOBE_SIZE / 2,
-    backgroundColor: "#080818",
-    borderWidth: 1, borderColor: "#1e2040",
-    overflow: "hidden",
-    shadowColor: "#3040ff",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
-    elevation: 10,
+    backgroundColor: "#06060e", borderWidth: 1, borderColor: "#1a1a2e", overflow: "hidden",
+    shadowColor: "#3040ff", shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25, shadowRadius: 30, elevation: 10,
   },
-  latLine: { position: "absolute", height: 1, backgroundColor: "#ffffff0a" },
-  lonLine: { position: "absolute", width: 1, height: GLOBE_SIZE, backgroundColor: "#ffffff0a" },
+  latLine: { position: "absolute", height: 1, backgroundColor: "#ffffff08" },
   dot: {
     position: "absolute", width: 36, height: 36, borderRadius: 8,
-    borderWidth: 1.5, overflow: "hidden", alignItems: "center", justifyContent: "center",
+    borderWidth: 1.5, overflow: "hidden",
   },
   dotImg: { width: 36, height: 36, borderRadius: 6 },
   card: {
