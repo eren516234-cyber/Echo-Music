@@ -1,10 +1,7 @@
-import React, {
-  createContext, useCallback, useContext,
-  useEffect, useRef, useState,
-} from "react";
-import { SONGS, Song } from "@/constants/data";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { SONGS, Song } from "@/constants/mockData";
 
-interface Ctx {
+interface PlayerContextType {
   currentSong: Song | null;
   queue: Song[];
   isPlaying: boolean;
@@ -20,10 +17,10 @@ interface Ctx {
   seek: (p: number) => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
-  toggleLike: (id: string) => void;
+  addToLiked: (id: string) => void;
 }
 
-const PlayerContext = createContext<Ctx | null>(null);
+const PlayerContext = createContext<PlayerContextType | null>(null);
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
@@ -33,23 +30,27 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isShuffled, setIsShuffled] = useState(false);
   const [repeatMode, setRepeatMode] = useState<"off" | "all" | "one">("off");
-  const [liked, setLiked] = useState<Set<string>>(new Set(["s1", "s3", "s7"]));
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [liked, setLiked] = useState<Set<string>>(new Set());
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isPlaying && currentSong) {
-      timer.current = setInterval(() => {
+      timerRef.current = setInterval(() => {
         setProgress(p => {
           const next = p + 1 / (currentSong.duration || 200);
-          if (next >= 1) { setIsPlaying(false); return 0; }
+          if (next >= 1) {
+            if (repeatMode === "one") return 0;
+            setIsPlaying(false);
+            return 0;
+          }
           return next;
         });
       }, 1000);
     } else {
-      if (timer.current) clearInterval(timer.current);
+      if (timerRef.current) clearInterval(timerRef.current);
     }
-    return () => { if (timer.current) clearInterval(timer.current); };
-  }, [isPlaying, currentSong]);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isPlaying, currentSong, repeatMode]);
 
   const playSong = useCallback((song: Song, q?: Song[]) => {
     const newQ = q ?? SONGS;
@@ -62,16 +63,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const togglePlay = useCallback(() => {
-    if (!currentSong) { playSong(SONGS[0]); return; }
+    if (!currentSong && SONGS.length > 0) { playSong(SONGS[0]); return; }
     setIsPlaying(p => !p);
   }, [currentSong, playSong]);
 
   const next = useCallback(() => {
     if (!queue.length) return;
-    const ni = (currentIndex + 1) % queue.length;
+    const ni = isShuffled
+      ? Math.floor(Math.random() * queue.length)
+      : (currentIndex + 1) % queue.length;
     setCurrentIndex(ni); setCurrentSong(queue[ni]);
     setProgress(0); setIsPlaying(true);
-  }, [queue, currentIndex]);
+  }, [queue, currentIndex, isShuffled]);
 
   const prev = useCallback(() => {
     if (!queue.length) return;
@@ -82,22 +85,26 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [queue, currentIndex, progress]);
 
   const seek = useCallback((p: number) => setProgress(Math.min(1, Math.max(0, p))), []);
+
   const toggleShuffle = useCallback(() => setIsShuffled(s => !s), []);
+
   const cycleRepeat = useCallback(() =>
     setRepeatMode(m => m === "off" ? "all" : m === "all" ? "one" : "off"), []);
-  const toggleLike = useCallback((id: string) =>
+
+  const addToLiked = useCallback((id: string) => {
     setLiked(prev => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else n.add(id);
-      return n;
-    }), []);
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
 
   return (
     <PlayerContext.Provider value={{
       currentSong, queue, isPlaying, progress, currentIndex,
       isShuffled, repeatMode, liked,
       playSong, togglePlay, next, prev, seek,
-      toggleShuffle, cycleRepeat, toggleLike,
+      toggleShuffle, cycleRepeat, addToLiked,
     }}>
       {children}
     </PlayerContext.Provider>
