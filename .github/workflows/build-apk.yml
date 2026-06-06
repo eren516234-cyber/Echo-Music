@@ -1,4 +1,4 @@
-name: Build APK
+name: Build YVL Music APK
 
 on:
   push:
@@ -7,11 +7,8 @@ on:
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build Android APK (No account needed)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: artifacts/mobile
 
     steps:
       - name: Checkout
@@ -28,22 +25,49 @@ jobs:
           version: 9
 
       - name: Install dependencies
+        working-directory: artifacts/mobile
         run: pnpm install
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          distribution: temurin
+          java-version: 17
 
-      - name: Build APK (local preview build)
-        run: eas build --platform android --profile preview --local --output yvl-music.apk --non-interactive
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Generate Android project (expo prebuild)
+        working-directory: artifacts/mobile
+        run: npx expo prebuild --platform android --no-install --clean
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_NO_TELEMETRY: 1
+
+      - name: Make gradlew executable
+        working-directory: artifacts/mobile/android
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        working-directory: artifacts/mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=512m"
+
+      - name: Rename APK
+        run: |
+          mkdir -p output
+          cp artifacts/mobile/android/app/build/outputs/apk/debug/app-debug.apk output/yvl-music.apk
+          echo "APK size: $(du -sh output/yvl-music.apk | cut -f1)"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: yvl-music-apk
-          path: artifacts/mobile/yvl-music.apk
+          path: output/yvl-music.apk
           retention-days: 30
+
+      - name: Build summary
+        run: |
+          echo "## YVL Music APK Built Successfully! 🎵" >> $GITHUB_STEP_SUMMARY
+          echo "Download the APK from the **Artifacts** section above." >> $GITHUB_STEP_SUMMARY
+          echo "APK size: $(du -sh output/yvl-music.apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
