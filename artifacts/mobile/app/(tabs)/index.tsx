@@ -8,12 +8,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlayer } from "@/context/PlayerContext";
+import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
-import { SONGS, ALBUMS, GENRES, fmt, Song, Album } from "@/constants/data";
+import { SONGS, ALBUMS, GENRES, formatDuration, Song, Album } from "@/constants/mockData";
 
 function SongRow({ song }: { song: Song }) {
-  const { playSong, currentSong, isPlaying, togglePlay, toggleLike, liked } = usePlayer();
-  const { accent } = useTheme();
+  const { playSong, currentSong, isPlaying, togglePlay } = usePlayer();
+  const { isLiked, toggleLike } = useLibrary();
+  const { accentColor } = useTheme();
   const isActive = currentSong?.id === song.id;
 
   return (
@@ -27,27 +29,23 @@ function SongRow({ song }: { song: Song }) {
       <View style={styles.artWrap}>
         <Image source={{ uri: song.artwork }} style={styles.songArt} />
         {isActive && (
-          <View style={[styles.overlay, { backgroundColor: accent + "cc" }]}>
+          <View style={[styles.overlay, { backgroundColor: accentColor + "cc" }]}>
             <Feather name={isPlaying ? "pause" : "play"} size={13} color="#000" />
           </View>
         )}
       </View>
       <View style={styles.songInfo}>
-        <Text style={[styles.songTitle, isActive && { color: accent }]} numberOfLines={1}>
+        <Text style={[styles.songTitle, isActive && { color: accentColor }]} numberOfLines={1}>
           {song.title}
         </Text>
         <Text style={styles.songArtist} numberOfLines={1}>{song.artist}</Text>
       </View>
-      <Text style={styles.dur}>{fmt(song.duration)}</Text>
+      <Text style={styles.dur}>{formatDuration(song.duration)}</Text>
       <Pressable
         style={styles.likeBtn}
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); toggleLike(song.id); }}
       >
-        <Feather
-          name={liked.has(song.id) ? "heart" : "heart"}
-          size={15}
-          color={liked.has(song.id) ? accent : "#333"}
-        />
+        <Feather name="heart" size={15} color={isLiked(song.id) ? accentColor : "#333"} />
       </Pressable>
     </Pressable>
   );
@@ -65,7 +63,7 @@ function AlbumCard({ album }: { album: Album }) {
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { accent } = useTheme();
+  const { accentColor } = useTheme();
   const [activeGenre, setActiveGenre] = useState("For you");
 
   return (
@@ -103,7 +101,9 @@ export default function HomeScreen() {
               >
                 <Text style={[styles.chipText, active && styles.chipTextActive]}>
                   {g.name}
-                  {g.count > 0 && <Text style={active ? styles.chipCountActive : styles.chipCount}>{" "}{g.count}</Text>}
+                  {g.count > 0 && (
+                    <Text style={active ? styles.chipCountActive : styles.chipCount}>{" "}{g.count}</Text>
+                  )}
                 </Text>
               </Pressable>
             );
@@ -114,7 +114,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>Quick picks</Text>
-            <Pressable><Text style={[styles.seeAll, { color: accent }]}>See all</Text></Pressable>
+            <Pressable><Text style={[styles.seeAll, { color: accentColor }]}>See all</Text></Pressable>
           </View>
           {SONGS.slice(0, 6).map(s => <SongRow key={s.id} song={s} />)}
         </View>
@@ -123,7 +123,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>New songs</Text>
-            <Pressable><Text style={[styles.seeAll, { color: accent }]}>See all</Text></Pressable>
+            <Pressable><Text style={[styles.seeAll, { color: accentColor }]}>See all</Text></Pressable>
           </View>
           <FlatList
             horizontal
@@ -140,7 +140,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>Keep listening</Text>
-            <Pressable><Text style={[styles.seeAll, { color: accent }]}>See all</Text></Pressable>
+            <Pressable><Text style={[styles.seeAll, { color: accentColor }]}>See all</Text></Pressable>
           </View>
           {SONGS.slice(6, 12).map(s => <SongRow key={s.id} song={s} />)}
         </View>
