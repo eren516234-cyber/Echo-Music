@@ -13,8 +13,8 @@ function TabIcon({
   label: string;
   focused: boolean;
 }) {
-  const { accent } = useTheme();
-  const color = focused ? accent : "#444";
+  const { accentColor } = useTheme();
+  const color = focused ? accentColor : "#444";
   return (
     <View style={{ alignItems: "center", gap: 3, paddingTop: 6 }}>
       <Feather name={name} size={22} color={color} />
@@ -60,10 +60,10 @@ export default function TabLayout() {
             ),
         }}
       >
-        <Tabs.Screen name="index"   options={{ tabBarIcon: ({ focused }) => <TabIcon name="home"     label="Home"    focused={focused} /> }} />
-        <Tabs.Screen name="search"  options={{ tabBarIcon: ({ focused }) => <TabIcon name="search"   label="Search"  focused={focused} /> }} />
-        <Tabs.Screen name="globe"   options={{ tabBarIcon: ({ focused }) => <TabIcon name="globe"    label="Globe"   focused={focused} /> }} />
-        <Tabs.Screen name="library" options={{ tabBarIcon: ({ focused }) => <TabIcon name="music"    label="Library" focused={focused} /> }} />
+        <Tabs.Screen name="index"    options={{ tabBarIcon: ({ focused }) => <TabIcon name="home"     label="Home"     focused={focused} /> }} />
+        <Tabs.Screen name="search"   options={{ tabBarIcon: ({ focused }) => <TabIcon name="search"   label="Search"   focused={focused} /> }} />
+        <Tabs.Screen name="globe"    options={{ tabBarIcon: ({ focused }) => <TabIcon name="globe"    label="Globe"    focused={focused} /> }} />
+        <Tabs.Screen name="library"  options={{ tabBarIcon: ({ focused }) => <TabIcon name="music"    label="Library"  focused={focused} /> }} />
         <Tabs.Screen name="settings" options={{ tabBarIcon: ({ focused }) => <TabIcon name="settings" label="Settings" focused={focused} /> }} />
       </Tabs>
       <MiniPlayer />
