@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { PlayerProvider } from "@/context/PlayerContext";
+import { LibraryProvider } from "@/context/LibraryContext";
 
 SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
@@ -48,11 +49,13 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <PlayerProvider>
-              <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
-                <KeyboardProvider>
-                  <Nav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
+              <LibraryProvider>
+                <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
+                  <KeyboardProvider>
+                    <Nav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </LibraryProvider>
             </PlayerProvider>
           </ThemeProvider>
         </QueryClientProvider>
