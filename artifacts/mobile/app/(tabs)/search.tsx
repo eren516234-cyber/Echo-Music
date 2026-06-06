@@ -2,18 +2,18 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
-  FlatList, Platform, Pressable, ScrollView,
+  Platform, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlayer } from "@/context/PlayerContext";
 import { useTheme } from "@/context/ThemeContext";
-import { SONGS, BROWSE_CATS, RECENT_SEARCHES, fmt } from "@/constants/data";
+import { SONGS, BROWSE_CATS, RECENT_SEARCHES, formatDuration } from "@/constants/mockData";
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const { playSong } = usePlayer();
-  const { accent } = useTheme();
+  const { accentColor } = useTheme();
   const [query, setQuery] = useState("");
   const [recents, setRecents] = useState(RECENT_SEARCHES);
   const [focused, setFocused] = useState(false);
@@ -72,7 +72,7 @@ export default function SearchScreen() {
                   <Text style={styles.resultTitle} numberOfLines={1}>{song.title}</Text>
                   <Text style={styles.resultSub} numberOfLines={1}>{song.artist}</Text>
                 </View>
-                <Text style={styles.resultDur}>{fmt(song.duration)}</Text>
+                <Text style={styles.resultDur}>{formatDuration(song.duration)}</Text>
               </Pressable>
             ))}
           </View>
@@ -140,8 +140,9 @@ const styles = StyleSheet.create({
   recentText: { color: "#ccc", fontSize: 13, fontFamily: "Inter_400Regular" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   catCard: {
-    width: "48%", height: 70, borderRadius: 12, justifyContent: "flex-end",
-    padding: 12, borderWidth: 1, borderColor: "#222", overflow: "hidden",
+    width: "48%", height: 70, borderRadius: 12,
+    justifyContent: "flex-end", padding: 12,
+    borderWidth: 1, borderColor: "#222", overflow: "hidden",
   },
   catDot: { position: "absolute", top: -10, right: -10, width: 60, height: 60, borderRadius: 30, opacity: 0.5 },
   catName: { fontSize: 16, fontWeight: "700", color: "#fff", fontFamily: "Inter_700Bold" },
